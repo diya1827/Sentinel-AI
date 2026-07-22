@@ -40,8 +40,13 @@ class SemgrepScanner(Scanner):
             self._settings.semgrep_config,
             "--timeout",
             str(self._settings.semgrep_timeout),
-            str(target),
         ]
+        # Optional resource caps for small hosts (e.g. Render's 512MB free tier).
+        if self._settings.semgrep_max_memory > 0:
+            cmd += ["--max-memory", str(self._settings.semgrep_max_memory)]
+        if self._settings.semgrep_jobs > 0:
+            cmd += ["--jobs", str(self._settings.semgrep_jobs)]
+        cmd.append(str(target))
         # Give the wrapper a little more wall-clock than Semgrep's own per-rule
         # timeout so we capture its output rather than killing it ourselves.
         result = await run_command(cmd, timeout=self._settings.semgrep_timeout + 30)

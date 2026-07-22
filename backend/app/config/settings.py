@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     semgrep_config: str = "auto"
     semgrep_timeout: int = 300
     gitleaks_timeout: int = 120
+    # Cap Semgrep memory (MB) and parallelism to fit small hosts (e.g. Render's
+    # 512MB free tier). 0 = let Semgrep decide (unbounded / all cores).
+    semgrep_max_memory: int = 0
+    semgrep_jobs: int = 0
 
     # ── Workspace ────────────────────────────────────────────────
     scan_workspace_dir: str = Field(default="/tmp/sentinel-scans")

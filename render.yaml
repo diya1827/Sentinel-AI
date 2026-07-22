@@ -1,0 +1,31 @@
+# Render Blueprint — deploys the Sentinel AI backend as a Docker web service.
+# Import at https://dashboard.render.com/blueprints (New → Blueprint → pick this repo).
+services:
+  - type: web
+    name: sentinel-ai-backend
+    runtime: docker
+    plan: free                     # 512MB RAM, spins down when idle
+    rootDir: backend               # build context + Dockerfile live here
+    healthCheckPath: /health
+    autoDeploy: true               # redeploy on push to the connected branch
+    envVars:
+      # Secret — set the actual value in the Render dashboard (not committed).
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: gemini-flash-lite-latest
+      - key: SEMGREP_CONFIG
+        value: p/default
+      # Keep Semgrep inside the 512MB free tier.
+      - key: SEMGREP_MAX_MEMORY
+        value: "400"
+      - key: SEMGREP_JOBS
+        value: "1"
+      - key: LLM_TIMEOUT
+        value: "120"
+      - key: SCAN_WORKSPACE_DIR
+        value: /tmp/sentinel-scans
+      # Allow the Vercel frontend (prod + preview URLs) to call the API.
+      - key: CORS_ORIGIN_REGEX
+        value: "https://.*\\.vercel\\.app"
+      # Render injects PORT automatically; the Dockerfile CMD honors it.
