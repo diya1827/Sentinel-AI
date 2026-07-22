@@ -1,0 +1,32 @@
+# ─── Web framework ───────────────────────────────────────────────
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20   # required for multipart/form-data file uploads
+
+# ─── Config & validation ─────────────────────────────────────────
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+
+# ─── LLM providers (provider-agnostic agent layer) ───────────────
+openai==1.59.6
+anthropic==0.42.0
+
+# ─── HTTP client ─────────────────────────────────────────────────
+httpx==0.28.1
+
+# ─── Security scanners (invoked as CLIs; pinned for reproducibility)
+# NOTE: gitleaks is a Go binary installed in the Dockerfile, not via pip.
+semgrep==1.99.0
+
+# ─── Utilities ───────────────────────────────────────────────────
+tenacity==9.0.0          # retry/backoff for LLM + tool calls
+structlog==24.4.0        # structured logging
+
+# ─── Dev / test (kept here for a single-image build; split into
+#     requirements-dev.txt if you want lean production images) ─────
+pytest==8.3.4
+pytest-asyncio==0.25.2
+ruff==0.8.6
+black==24.10.0
+mypy==1.14.1

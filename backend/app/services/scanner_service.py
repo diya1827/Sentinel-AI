@@ -1,0 +1,81 @@
+"""ScannerService — run every scanner against a staged repository.
+
+Orchestrates the scanning use-case: resolve the repository's staged path, run
+all registered scanners **concurrently**, and merge their outputs into one
+`ScanReport`. Because each `Scanner.scan` handles its own errors, one tool
+failing (or being uninstalled) never sinks the others — the report simply
+records that scanner as `FAILED`.
+
+No AI here — this layer is pure static analysis + secret scanning.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from collections import Counter
+
+from app.config.settings import Settings, get_settings
+from app.models.finding import Severity
+from app.models.scan import ScannerResult, ScanReport
+from app.scanners.base import Scanner
+from app.scanners.gitleaks import GitleaksScanner
+from app.scanners.semgrep import SemgrepScanner
+from app.utils.logging import get_logger
+from app.utils.workspace import Workspace
+
+logger = get_logger(__name__)
+
+
+class ScannerService:
+    """Runs the registered scanners over an ingested repository."""
+
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        scanners: list[Scanner] | None = None,
+    ) -> None:
+        self._settings = settings or get_settings()
+        self._workspace = Workspace(self._settings.scan_workspace_dir)
+        # Default registry; injectable for tests / future tools.
+        self._scanners = (
+            scanners
+            if scanners is not None
+            else [SemgrepScanner(self._settings), GitleaksScanner(self._settings)]
+        )
+
+    async def scan_repository(self, repository_id: str) -> ScanReport:
+        """Scan a previously ingested repository.
+
+        Raises:
+            ValueError: If `repository_id` is not a valid workspace id.
+            FileNotFoundError: If no repository is staged under that id.
+        """
+        target = self._workspace.path_for(repository_id)  # validates the id
+        if not target.exists():
+            raise FileNotFoundError(repository_id)
+
+        logger.info(
+            "Scanning %s with: %s",
+            repository_id,
+            ", ".join(s.name for s in self._scanners),
+        )
+        # scan() never raises, so gather always yields one result per scanner.
+        results = await asyncio.gather(*(s.scan(target) for s in self._scanners))
+        return self._build_report(repository_id, list(results))
+
+    @staticmethod
+    def _build_report(
+        repository_id: str, results: list[ScannerResult]
+    ) -> ScanReport:
+        merged = [finding for result in results for finding in result.findings]
+        counts: Counter[str] = Counter(f.severity.value for f in merged)
+        # Always emit every severity key (0-filled) for a stable frontend shape.
+        severity_counts = {sev.value: counts.get(sev.value, 0) for sev in Severity}
+
+        return ScanReport(
+            repository_id=repository_id,
+            results=results,
+            findings=merged,
+            total_findings=len(merged),
+            severity_counts=severity_counts,
+        )

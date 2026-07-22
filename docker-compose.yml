@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────
+# Sentinel AI — local orchestration
+# Brings up the FastAPI backend (with Semgrep + Gitleaks baked in) and
+# the Next.js frontend.
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: sentinel-backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      # Live-reload of source during development.
+      - ./backend/app:/app/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx,sys; sys.exit(0 if httpx.get('http://localhost:8000/health').status_code==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: sentinel-frontend
+    env_file:
+      - ./frontend/.env.local
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# A named network is created implicitly; add volumes/db services here as the
+# project grows (e.g. Postgres for persisted reviews).
