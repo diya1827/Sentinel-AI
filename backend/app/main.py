@@ -9,21 +9,37 @@ NOTE: This is scaffold only. Routers and services are stubs to be filled in.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.dependencies import get_job_service
 from app.api.router import api_router
 from app.config.settings import get_settings
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown hooks (e.g. warm LLM client, verify scanner CLIs)."""
-    # TODO: initialize shared clients / validate `semgrep` & `gitleaks` on PATH
-    yield
-    # TODO: graceful cleanup
+    """Start the in-process worker pool; cancel it on shutdown."""
+    settings = get_settings()
+    job_service = get_job_service()
+    workers = [
+        asyncio.create_task(job_service.run_worker(f"worker-{i}"))
+        for i in range(max(1, settings.worker_concurrency))
+    ]
+    logger.info("Started %d scan worker(s)", len(workers))
+    try:
+        yield
+    finally:
+        for task in workers:
+            task.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+        logger.info("Worker pool stopped")
 
 
 def create_app() -> FastAPI:

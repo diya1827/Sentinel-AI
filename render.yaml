@@ -9,9 +9,15 @@ services:
     healthCheckPath: /health
     autoDeploy: true               # redeploy on push to the connected branch
     envVars:
-      # Secret — set the actual value in the Render dashboard (not committed).
+      # Secrets — set the actual values in the Render dashboard (not committed).
       - key: LLM_API_KEY
         sync: false
+      # Redis connection URL (e.g. Upstash rediss://...). Blank falls back to an
+      # in-process store; set this for the real queue across restarts.
+      - key: REDIS_URL
+        sync: false
+      - key: WORKER_CONCURRENCY
+        value: "3"
       - key: LLM_MODEL
         value: gemini-flash-lite-latest
       - key: SEMGREP_CONFIG

@@ -199,7 +199,10 @@ Base path: `/api/v1`. Interactive docs at `/docs`.
 | `POST` | `/repositories/upload` | Ingest a `.zip` upload (`multipart/form-data`, field `file`). Returns the same metadata. |
 | `DELETE` | `/repositories/{repository_id}` | Delete a staged repository's temporary files. |
 | `POST` | `/repositories/{repository_id}/scan` | Run **Semgrep** + **Gitleaks** on a staged repo. Returns a `ScanReport`: per-scanner results plus a merged `findings[]` in the unified schema and a severity tally. |
-| `POST` | `/repositories/{repository_id}/analyze` | Scan **and** run the AI AppSec-engineer agent. Returns an `AgentReport`: correlated/deduplicated/prioritized issues with explanations and remediations, plus **executive** and **developer** summaries. |
+| `POST` | `/repositories/{repository_id}/analyze` | Scan **and** run the AI AppSec-engineer agent (synchronous). Returns an `AgentReport`. |
+| `POST` | `/jobs` | **Enqueue** an async scan+review. Body: `{ "repo_url": ... }` or `{ "repository_id": ... }`. Returns `{ job_id, status, deduplicated }` immediately (`202`). |
+| `GET` | `/jobs/{job_id}` | Poll a job's `status` (`queued`/`running`/`done`/`failed`) and, when done, its `result` (`AgentReport`). |
+| `GET` | `/metrics` | Live platform counters (jobs queued/running/done/failed/deduplicated, cache hits, findings-by-severity). |
 
 **Unified finding schema.** Every scanner normalizes into one `Finding` shape — `{ scanner, severity, file, line, title, description, remediation, ruleId? }` — so the frontend consumes a single schema regardless of the underlying tool. Scanners run concurrently and each is isolated: if one tool is missing or errors, it's reported as a `failed` result inside a still-successful `200` report rather than failing the whole scan. (No AI in this layer — it's pure static analysis + secret scanning.)
 
@@ -212,6 +215,25 @@ The `/analyze` step is not a summarizer. The LLM is prompted to act as a **senio
 - **Prompts are externalized** under `backend/app/agents/prompts/` (`system.md`, `analysis.md`).
 - **Agentic — it investigates the code.** The agent has read-only, sandboxed tools (`read_file`, `search_code`, `list_directory`) and is prompted to *verify* findings before triaging: it opens the referenced file/line, traces user input to sinks, and checks whether a flagged "secret" is a live credential or a dummy value. This is what separates real, exploitable issues from noise — and turns the LLM from a summarizer into an investigator. The tool sandbox is confined to the repository root (traversal rejected, symlink-escape rejected, output size-capped), because the code under review is untrusted.
 - **Structured & validated.** Output is parsed against the `AgentReport` Pydantic schema with a bounded retry that feeds validation errors back to the model.
+
+### ⚡ Async scan platform (queue + workers)
+
+Scanning is slow (clone + Semgrep + Gitleaks + a multi-turn LLM) and the LLM's free tier is rate-limited, so scans run **off the request path** on a Redis-backed queue rather than blocking a request:
+
+```
+POST /jobs ─▶ enqueue (Redis list) ─▶ worker pool (BRPOP) ─▶ clone+scan+LLM ─▶ store
+     │                                                                            │
+     └──── returns job_id immediately ──── GET /jobs/{id} polls status ───────────┘
+```
+
+- **Horizontal throughput.** A pool of `WORKER_CONCURRENCY` workers drains the queue concurrently instead of one-request-at-a-time. (Load test: ~110 submit req/s locally; workers scale out.)
+- **Idempotency (exactly-once).** A submit does `SET NX` on the normalized repo URL, so a double-click / concurrent duplicate returns the **existing** job instead of scanning twice.
+- **Atomic job claim.** Workers pull with `BRPOP` (atomic), so two workers can never grab the same job under contention.
+- **Result cache by commit SHA.** Identical commit ⇒ identical result, served from cache; unchanged code is never rescanned.
+- **Atomic counters.** Every state transition is an `HINCRBY` (atomic server-side) — live `/metrics` stay correct under concurrent workers where a read-modify-write counter would lose updates.
+- **One dependency, many uses.** Redis backs the queue, the cache, the idempotency keys, and the counters. Locally it falls back to in-process `fakeredis` (no install); production sets `REDIS_URL` to real Redis (e.g. Upstash).
+
+*Next steps (design answers): Redis **Streams + consumer groups** with `XCLAIM` for at-least-once crash recovery, a **dead-letter queue** after N retries, and a distributed **token-bucket rate limiter** in front of the LLM.*
 
 **Ingestion hardening** (this is a security product, so untrusted input is treated as hostile):
 - GitHub URLs are allow-listed (`https` + `ALLOWED_GIT_HOSTS` only), credentials stripped, and cloned with no shell (no command injection) and no interactive auth prompts.
@@ -228,9 +250,10 @@ The `/analyze` step is not a summarizer. The LLM is prompted to act as a **senio
 - [x] AI AppSec-engineer agent (correlate, dedup, prioritize, remediate, summaries)
 - [x] Agentic tool-calling — the agent reads/searches the code to verify findings (sandboxed)
 - [x] Dashboard UI (upload/GitHub, animated scan, risk score, findings, summaries, export)
-- [ ] Review orchestration service (persist reviews, history)
-- [ ] Dashboard UI (findings, filtering, reports)
-- [ ] Auth & persistence
+- [x] Async scan platform — Redis queue + worker pool, idempotency, commit-SHA result cache, atomic counters + `/metrics`
+- [x] Live deployment — Docker backend on Render, Next.js frontend on Vercel
+- [ ] Streams/consumer-groups + dead-letter queue for at-least-once crash recovery
+- [ ] Persist review history + auth
 - [ ] CI pipeline
 
 ---

@@ -127,3 +127,28 @@ async def clone_repository(
     if proc.returncode != 0:
         detail = stderr.decode("utf-8", "replace").strip()
         raise GitCloneError(f"git clone failed: {detail}")
+
+
+async def get_head_sha(repo_dir: Path, *, timeout: int = 15) -> str | None:
+    """Return the HEAD commit SHA of a git checkout, or None if unavailable.
+
+    Used to key the result cache: identical commit ⇒ identical scan result, so a
+    repeated submit of the same commit is served from cache instead of rescanned.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            str(repo_dir),
+            "rev-parse",
+            "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except (FileNotFoundError, asyncio.TimeoutError, OSError):
+        return None
+    if proc.returncode != 0:
+        return None
+    sha = stdout.decode("utf-8", "replace").strip()
+    return sha or None

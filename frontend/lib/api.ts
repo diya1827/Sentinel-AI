@@ -73,18 +73,73 @@ export function ingestUpload(file: File): Promise<RepositoryMetadata> {
   });
 }
 
-/** Ingest a public GitHub repository by URL. */
-export function ingestGithub(repoUrl: string): Promise<RepositoryMetadata> {
-  return request<RepositoryMetadata>("/repositories/github", {
+// ── async job API (queue-backed scanning) ────────────────────────
+
+export type JobStatus = "queued" | "running" | "done" | "failed";
+
+export interface SubmitResponse {
+  jobId: string;
+  status: JobStatus;
+  deduplicated: boolean;
+}
+
+export interface Job {
+  id: string;
+  status: JobStatus;
+  result: AgentReport | null;
+  error: string | null;
+  cached: boolean;
+}
+
+/** Enqueue a scan of a public GitHub URL; returns immediately with a job id. */
+export function submitGithubJob(repoUrl: string): Promise<SubmitResponse> {
+  return request<SubmitResponse>("/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ repo_url: repoUrl }),
   });
 }
 
-/** Run scanners + the AI agent, returning the full review. */
-export function analyzeRepository(repositoryId: string): Promise<AgentReport> {
-  return request<AgentReport>(`/repositories/${repositoryId}/analyze`, {
+/** Enqueue a scan of an already-ingested repository (e.g. a ZIP upload). */
+export function submitRepositoryJob(repositoryId: string): Promise<SubmitResponse> {
+  return request<SubmitResponse>("/jobs", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repository_id: repositoryId }),
   });
+}
+
+/** Fetch a job's current status/result. */
+export function getJob(jobId: string): Promise<Job> {
+  return request<Job>(`/jobs/${jobId}`);
+}
+
+/**
+ * Poll a job until it reaches a terminal state, returning the review.
+ * `onStatus` fires on each poll so the UI can reflect queued vs running.
+ */
+export async function waitForJob(
+  jobId: string,
+  onStatus?: (status: JobStatus) => void,
+  opts: { intervalMs?: number; timeoutMs?: number } = {},
+): Promise<AgentReport> {
+  const intervalMs = opts.intervalMs ?? 2000;
+  const timeoutMs = opts.timeoutMs ?? 5 * 60 * 1000;
+  const started = Date.now();
+
+  for (;;) {
+    const job = await getJob(jobId);
+    onStatus?.(job.status);
+    if (job.status === "done") {
+      if (!job.result) throw new Error("Scan finished without a result.");
+      return job.result;
+    }
+    if (job.status === "failed") {
+      throw new Error(job.error ?? "Scan failed.");
+    }
+    if (Date.now() - started > timeoutMs) {
+      throw new Error("Timed out waiting for the scan to finish.");
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
 }

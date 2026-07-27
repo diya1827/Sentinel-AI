@@ -1,17 +1,23 @@
 /**
- * useAnalysis — drives the ingest → analyze flow as a small state machine.
+ * useAnalysis — drives the ingest → enqueue → poll flow as a state machine.
  *
  * States: idle → ingesting → analyzing → done | error.
- * Exposes the current status plus the resulting `AgentReport` and any error,
- * so the UI can swap between the Upload, Scanning, and Results views.
+ * Scanning is async on the backend: we submit a job and poll it, so a slow
+ * scan + LLM run never holds a request open. GitHub URLs are submitted straight
+ * to the queue (the worker clones); ZIP uploads are ingested first, then queued.
  */
 
 "use client";
 
 import { useCallback, useState } from "react";
 
-import { analyzeRepository, ingestGithub, ingestUpload } from "@/lib/api";
-import type { AgentReport, RepositoryMetadata } from "@/types";
+import {
+  ingestUpload,
+  submitGithubJob,
+  submitRepositoryJob,
+  waitForJob,
+} from "@/lib/api";
+import type { AgentReport } from "@/types";
 
 export type AnalysisStatus = "idle" | "ingesting" | "analyzing" | "done" | "error";
 
@@ -29,27 +35,46 @@ export function useAnalysis(): UseAnalysis {
   const [report, setReport] = useState<AgentReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const run = useCallback(
-    async (ingest: () => Promise<RepositoryMetadata>) => {
+  const fail = useCallback((err: unknown) => {
+    setError(err instanceof Error ? err.message : "Something went wrong.");
+    setStatus("error");
+  }, []);
+
+  const analyzeFromGithub = useCallback(
+    async (url: string) => {
+      setError(null);
+      setReport(null);
+      setStatus("analyzing");
+      try {
+        const { jobId } = await submitGithubJob(url);
+        const result = await waitForJob(jobId);
+        setReport(result);
+        setStatus("done");
+      } catch (err) {
+        fail(err);
+      }
+    },
+    [fail],
+  );
+
+  const analyzeFromFile = useCallback(
+    async (file: File) => {
       setError(null);
       setReport(null);
       setStatus("ingesting");
       try {
-        const meta = await ingest();
+        const meta = await ingestUpload(file);
         setStatus("analyzing");
-        const result = await analyzeRepository(meta.repositoryId);
+        const { jobId } = await submitRepositoryJob(meta.repositoryId);
+        const result = await waitForJob(jobId);
         setReport(result);
         setStatus("done");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
-        setStatus("error");
+        fail(err);
       }
     },
-    [],
+    [fail],
   );
-
-  const analyzeFromFile = useCallback((file: File) => run(() => ingestUpload(file)), [run]);
-  const analyzeFromGithub = useCallback((url: string) => run(() => ingestGithub(url)), [run]);
 
   const reset = useCallback(() => {
     setStatus("idle");

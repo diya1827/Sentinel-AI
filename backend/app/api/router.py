@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.routes import analysis, repositories, scans
+from app.api.routes import analysis, jobs, repositories, scans
 
 api_router = APIRouter()
 
@@ -19,3 +19,4 @@ api_router.include_router(
 )
 api_router.include_router(scans.router, prefix="/repositories", tags=["scans"])
 api_router.include_router(analysis.router, prefix="/repositories", tags=["analysis"])
+api_router.include_router(jobs.router, tags=["jobs"])

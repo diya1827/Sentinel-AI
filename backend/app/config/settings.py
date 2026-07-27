@@ -75,6 +75,18 @@ class Settings(BaseSettings):
     # ── Workspace ────────────────────────────────────────────────
     scan_workspace_dir: str = Field(default="/tmp/sentinel-scans")
 
+    # ── Job queue (Redis) ────────────────────────────────────────
+    # Connection URL, e.g. redis://... or rediss://... (Upstash in prod).
+    # Blank → an in-process fakeredis is used (local dev / tests), so the app
+    # runs without a Redis install; production sets REDIS_URL to real Redis.
+    redis_url: str = ""
+    # Number of in-process worker coroutines pulling jobs off the queue.
+    worker_concurrency: int = 3
+    # TTLs (seconds): finished job records, cached results, submit idempotency.
+    job_ttl: int = 86_400
+    result_cache_ttl: int = 86_400
+    idempotency_ttl: int = 3_600
+
     # ── Repository ingestion ─────────────────────────────────────
     # Hosts a GitHub URL is allowed to resolve to (comma-separated).
     allowed_git_hosts: str = "github.com"

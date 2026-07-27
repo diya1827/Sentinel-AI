@@ -15,6 +15,9 @@ anthropic==0.42.0
 # ─── HTTP client ─────────────────────────────────────────────────
 httpx==0.28.1
 
+# ─── Job queue / cache / counters ────────────────────────────────
+redis==5.3.1             # async client; backs the scan queue, cache, counters
+
 # ─── Security scanners (invoked as CLIs; pinned for reproducibility)
 # NOTE: gitleaks is a Go binary installed in the Dockerfile, not via pip.
 semgrep==1.99.0
@@ -27,6 +30,7 @@ structlog==24.4.0        # structured logging
 #     requirements-dev.txt if you want lean production images) ─────
 pytest==8.3.4
 pytest-asyncio==0.25.2
+fakeredis==2.37.0        # in-memory Redis for hermetic tests / local dev
 ruff==0.8.6
 black==24.10.0
 mypy==1.14.1

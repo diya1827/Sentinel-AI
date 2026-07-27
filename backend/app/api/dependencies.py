@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from app.services.agent_service import AgentService
+from app.services.job_service import JobService
 from app.services.repository_service import RepositoryService
 from app.services.scanner_service import ScannerService
 
@@ -29,3 +30,9 @@ def get_scanner_service() -> ScannerService:
 def get_agent_service() -> AgentService:
     """Provide a singleton AgentService."""
     return AgentService()
+
+
+@lru_cache
+def get_job_service() -> JobService:
+    """Provide a singleton JobService (shared by API handlers and workers)."""
+    return JobService()
