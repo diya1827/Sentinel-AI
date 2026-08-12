@@ -16,15 +16,18 @@ services:
       # in-process store; set this for the real queue across restarts.
       - key: REDIS_URL
         sync: false
+      # Free tier is 512MB: one scan at a time, one scanner at a time, so peak
+      # memory ≈ the app + a single scanner process (avoids OOM crashes).
       - key: WORKER_CONCURRENCY
-        value: "3"
+        value: "1"
+      - key: SCANNER_CONCURRENCY
+        value: "1"
       - key: LLM_MODEL
         value: gemini-flash-lite-latest
       - key: SEMGREP_CONFIG
         value: p/default
-      # Keep Semgrep inside the 512MB free tier.
       - key: SEMGREP_MAX_MEMORY
-        value: "400"
+        value: "250"
       - key: SEMGREP_JOBS
         value: "1"
       - key: LLM_TIMEOUT

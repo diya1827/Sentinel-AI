@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # 512MB free tier). 0 = let Semgrep decide (unbounded / all cores).
     semgrep_max_memory: int = 0
     semgrep_jobs: int = 0
+    # Max scanners run concurrently. 0 = all at once (fast, needs RAM); set to 1
+    # on memory-constrained hosts so only one scanner process runs at a time.
+    scanner_concurrency: int = 0
     # SCA (osv-scanner) — dependency vulnerabilities → OWASP A06.
     osv_timeout: int = 180
     # IaC misconfiguration (checkov) → OWASP A05.

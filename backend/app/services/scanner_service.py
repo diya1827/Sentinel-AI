@@ -72,7 +72,19 @@ class ScannerService:
             ", ".join(s.name for s in self._scanners),
         )
         # scan() never raises, so gather always yields one result per scanner.
-        results = await asyncio.gather(*(s.scan(target) for s in self._scanners))
+        # On memory-constrained hosts a semaphore caps how many scanner
+        # subprocesses run at once (each — Semgrep especially — is RAM-hungry).
+        limit = self._settings.scanner_concurrency
+        if limit and limit > 0:
+            sem = asyncio.Semaphore(limit)
+
+            async def _run(scanner: Scanner) -> ScannerResult:
+                async with sem:
+                    return await scanner.scan(target)
+
+            results = await asyncio.gather(*(_run(s) for s in self._scanners))
+        else:
+            results = await asyncio.gather(*(s.scan(target) for s in self._scanners))
         return self._build_report(repository_id, list(results))
 
     @staticmethod
