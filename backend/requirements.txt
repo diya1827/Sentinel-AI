@@ -4,7 +4,7 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20   # required for multipart/form-data file uploads
 
 # ─── Config & validation ─────────────────────────────────────────
-pydantic==2.10.4
+pydantic==2.13.4        # >=2.11 required by sqlmodel; <3 satisfies fastapi/openai
 pydantic-settings==2.7.1
 python-dotenv==1.0.1
 
