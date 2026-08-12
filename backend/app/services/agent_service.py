@@ -43,11 +43,13 @@ from app.utils.workspace import Workspace
 
 logger = get_logger(__name__)
 
-# Cap findings sent to the model to keep the prompt within budget.
-_MAX_FINDINGS = 300
-# Max model round-trips per review. The last turn forces a final answer (tools
-# withdrawn), so this bounds investigation depth without ever erroring out.
-_MAX_TURNS = 10
+# Cap findings sent to the model to keep the prompt (input tokens) within the
+# free-tier per-minute budget. Findings are deduped downstream, so a tight cap
+# rarely loses signal.
+_MAX_FINDINGS = 120
+# Max model round-trips per review. Each turn re-sends the growing conversation,
+# so fewer turns = far fewer input tokens. The last turn forces a final answer.
+_MAX_TURNS = 6
 
 # Sent on the final turn to make the agent stop investigating and report.
 _FORCE_FINAL = (

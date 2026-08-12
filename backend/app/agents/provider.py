@@ -146,6 +146,12 @@ class OpenAICompatibleProvider:
         try:
             resp = await client.chat.completions.create(**kwargs)
         except Exception as exc:  # noqa: BLE001 — normalize any SDK error
+            text = str(exc)
+            if "429" in text or "RESOURCE_EXHAUSTED" in text or "quota" in text.lower():
+                raise LLMError(
+                    "The free AI tier is rate-limited right now (too many requests "
+                    "this minute). Wait about a minute and try again."
+                ) from exc
             raise LLMError(f"LLM request failed: {exc}") from exc
 
         message = resp.choices[0].message
