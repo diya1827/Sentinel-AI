@@ -38,5 +38,19 @@ class Finding(BaseModel):
     description: str | None = Field(default=None, description="What the issue is.")
     remediation: str | None = Field(default=None, description="How to fix it.")
 
+    # Security taxonomy (optional; enriches triage and OWASP-coverage reporting).
+    cwe_ids: list[str] = Field(
+        default_factory=list,
+        description="Associated CWE ids, e.g. ['CWE-89'], when known.",
+    )
+    owasp_category: str | None = Field(
+        default=None,
+        description="OWASP Top 10 2021 category label, e.g. 'A03:2021 - Injection'.",
+    )
+
     # Provenance (optional; not part of the minimal consumed contract).
     rule_id: str | None = Field(default=None, description="Originating rule identifier.")
+    xss_type: str | None = Field(
+        default=None,
+        description="XSS classification when applicable: 'reflected', 'stored', or 'dom'.",
+    )

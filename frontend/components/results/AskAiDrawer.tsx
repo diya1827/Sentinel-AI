@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 
-import { CloseIcon, SparkIcon } from "@/components/ui/icons";
-import type { AgentReport } from "@/types";
+import { CopyButton } from "@/components/ui/CopyButton";
+import { SeverityBadge } from "@/components/ui/SeverityBadge";
+import { CloseIcon, LinkIcon, SparkIcon } from "@/components/ui/icons";
+import type { AgentReport, PrioritizedFinding } from "@/types";
 
 interface AskAiDrawerProps {
   report: AgentReport;
@@ -12,9 +14,9 @@ interface AskAiDrawerProps {
 }
 
 /**
- * A slide-over that surfaces the agent's guidance. Interactive Q&A needs a
- * backend chat endpoint (roadmap); for now it presents the developer summary,
- * per-issue remediations, and any caveats the agent raised.
+ * The friendly, actionable side of the review: for each issue it explains the
+ * risk in plain English, lists quick fix steps, links to trusted guides, and
+ * hands over a copy-paste prompt for the user's own AI coding assistant.
  */
 export function AskAiDrawer({ report, open, onClose }: AskAiDrawerProps) {
   useEffect(() => {
@@ -25,91 +27,144 @@ export function AskAiDrawer({ report, open, onClose }: AskAiDrawerProps) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  const issues = [...report.prioritizedFindings]
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 8);
+
   return (
     <>
-      {/* Overlay */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity ${
+        className={`fixed inset-0 z-40 bg-ink/30 transition-opacity ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
 
-      {/* Panel */}
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-800 bg-slate-900 shadow-2xl transition-transform duration-300 ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-black/5 bg-pistachio-50 shadow-2xl transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-black/5 bg-white px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-400">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pistachio-100 text-pistachio-600">
               <SparkIcon className="h-4 w-4" />
             </span>
-            <h2 className="text-sm font-semibold text-slate-100">AI Assistant</h2>
+            <div className="leading-tight">
+              <h2 className="text-sm font-semibold text-ink">Fix it with AI</h2>
+              <p className="text-[11px] text-ink/50">Plain-English fixes you can act on</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="rounded-md p-1.5 text-ink/50 hover:bg-pistachio-50 hover:text-ink"
             aria-label="Close"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <Section title="What to do first">
-            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-300">
-              {report.developerSummary}
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+          {/* The gist */}
+          <div className="rounded-xl border border-black/5 bg-white p-4">
+            <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/50">
+              The gist
+            </h3>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80">
+              {report.executiveSummary}
             </p>
-          </Section>
+          </div>
 
-          {report.prioritizedFindings.length > 0 && (
-            <Section title="Fix guidance by issue">
-              <ul className="space-y-3">
-                {report.prioritizedFindings.slice(0, 8).map((f) => (
-                  <li key={f.id} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                    <p className="text-sm font-medium text-slate-200">
-                      {f.priority}. {f.title}
-                    </p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-400">{f.remediation}</p>
-                  </li>
-                ))}
-              </ul>
-            </Section>
+          {issues.length === 0 ? (
+            <p className="px-1 py-6 text-center text-sm text-ink/50">
+              Nothing urgent to fix. Nice. 🎉
+            </p>
+          ) : (
+            issues.map((f) => <IssueCard key={f.id} finding={f} />)
           )}
 
           {report.notes && (
-            <Section title="Caveats">
-              <p className="text-sm leading-relaxed text-slate-400">{report.notes}</p>
-            </Section>
+            <div className="rounded-xl border border-black/5 bg-white p-4">
+              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/50">
+                Caveats
+              </h3>
+              <p className="text-sm leading-relaxed text-ink/60">{report.notes}</p>
+            </div>
           )}
-        </div>
-
-        {/* Composer (interactive chat is on the roadmap) */}
-        <div className="border-t border-slate-800 p-4">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2">
-            <input
-              disabled
-              placeholder="Ask a follow-up question (coming soon)…"
-              className="flex-1 bg-transparent text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none disabled:cursor-not-allowed"
-            />
-            <SparkIcon className="h-4 w-4 text-slate-600" />
-          </div>
         </div>
       </aside>
     </>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function IssueCard({ finding }: { finding: PrioritizedFinding }) {
   return (
-    <section>
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {title}
-      </h3>
-      {children}
-    </section>
+    <div className="rounded-xl border border-black/5 bg-white p-4">
+      {/* Title row */}
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-ink">
+          {finding.priority}. {finding.title}
+        </p>
+        <SeverityBadge severity={finding.severity} />
+      </div>
+
+      {/* Plain-English explanation */}
+      <p className="mt-2 text-sm leading-relaxed text-ink/80">
+        {finding.plainSummary || finding.whyItMatters}
+      </p>
+
+      {/* Quick fix steps */}
+      {finding.fixSteps.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/50">
+            How to fix
+          </p>
+          <ul className="space-y-1.5">
+            {finding.fixSteps.map((step, i) => (
+              <li key={i} className="flex gap-2 text-sm text-ink/80">
+                <span className="mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full bg-pistachio-100 text-[10px] font-semibold text-pistachio-700">
+                  {i + 1}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Copy-paste prompt for their AI coding assistant */}
+      {finding.fixPrompt && (
+        <div className="mt-3 rounded-lg border border-pistachio-300 bg-pistachio-50 p-3">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-pistachio-700">
+              Paste into your AI coding tool
+            </p>
+            <CopyButton text={finding.fixPrompt} label="Copy prompt" />
+          </div>
+          <p className="whitespace-pre-line font-mono text-xs leading-relaxed text-ink/70">
+            {finding.fixPrompt}
+          </p>
+        </div>
+      )}
+
+      {/* Helpful links */}
+      {finding.references.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {finding.references.map((ref) => (
+            <a
+              key={ref.url}
+              href={ref.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-2.5 py-1 text-xs font-medium text-ink/70 transition-colors hover:border-pistachio-400 hover:bg-pistachio-50 hover:text-ink"
+            >
+              <LinkIcon className="h-3 w-3" />
+              {ref.title}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from app.models.finding import Finding, Severity
+from app.models.owasp import classify_owasp, extract_cwe_ids, normalize_owasp
 from app.scanners.base import Scanner
 from app.utils.subprocess import run_command
 
@@ -29,6 +30,10 @@ class SemgrepScanner(Scanner):
 
     name = "semgrep"
 
+    def _config(self) -> str:
+        """The `--config` value to run. Overridable by subclasses."""
+        return self._settings.semgrep_config
+
     async def _run_scan(self, target: Path) -> list[Finding]:
         cmd = [
             "semgrep",
@@ -37,7 +42,7 @@ class SemgrepScanner(Scanner):
             "--quiet",
             "--metrics=off",
             "--config",
-            self._settings.semgrep_config,
+            self._config(),
             "--timeout",
             str(self._settings.semgrep_timeout),
         ]
@@ -63,28 +68,34 @@ class SemgrepScanner(Scanner):
     def parse(self, stdout: str) -> list[Finding]:
         """Parse Semgrep JSON stdout into normalized findings (pure/testable)."""
         data = json.loads(stdout)
-        findings: list[Finding] = []
+        return [self._build_finding(item) for item in data.get("results", [])]
 
-        for item in data.get("results", []):
-            extra: dict[str, Any] = item.get("extra") or {}
-            start: dict[str, Any] = item.get("start") or {}
-            check_id = item.get("check_id") or "semgrep-finding"
+    def _build_finding(self, item: dict[str, Any]) -> Finding:
+        """Map one Semgrep result to a Finding. Overridable for enrichment."""
+        extra: dict[str, Any] = item.get("extra") or {}
+        start: dict[str, Any] = item.get("start") or {}
+        check_id = item.get("check_id") or "semgrep-finding"
 
-            findings.append(
-                Finding(
-                    scanner=self.name,
-                    severity=_SEVERITY_MAP.get(
-                        str(extra.get("severity", "")).upper(), Severity.LOW
-                    ),
-                    file=item.get("path", ""),
-                    line=start.get("line"),
-                    title=check_id.split(".")[-1],
-                    description=extra.get("message"),
-                    remediation=self._remediation(extra),
-                    rule_id=check_id,
-                )
-            )
-        return findings
+        metadata: dict[str, Any] = extra.get("metadata") or {}
+        cwe_ids = extract_cwe_ids(metadata.get("cwe"))
+        owasp = normalize_owasp(metadata.get("owasp")) or classify_owasp(
+            cwe_ids, self.name
+        )
+
+        return Finding(
+            scanner=self.name,
+            severity=_SEVERITY_MAP.get(
+                str(extra.get("severity", "")).upper(), Severity.LOW
+            ),
+            file=item.get("path", ""),
+            line=start.get("line"),
+            title=check_id.split(".")[-1],
+            description=extra.get("message"),
+            remediation=self._remediation(extra),
+            cwe_ids=cwe_ids,
+            owasp_category=owasp,
+            rule_id=check_id,
+        )
 
     @staticmethod
     def _remediation(extra: dict[str, Any]) -> str | None:

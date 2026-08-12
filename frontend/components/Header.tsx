@@ -9,15 +9,17 @@ interface HeaderProps {
 /** Top navigation bar shown on every view. */
 export function Header({ action }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/70 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-black/5 bg-pistachio-200/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-pistachio-600 shadow-soft">
             <ShieldIcon className="h-5 w-5" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-slate-100">Sentinel AI</p>
-            <p className="text-[11px] text-slate-500">Application Security Reviewer</p>
+            <p className="text-sm font-bold text-ink">
+              Sentinel<span className="text-pistachio-600"> AI</span>
+            </p>
+            <p className="text-[11px] text-ink/50">Application Security Reviewer</p>
           </div>
         </div>
         {action}

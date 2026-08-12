@@ -126,6 +126,19 @@ async def clone_repository(
 
     if proc.returncode != 0:
         detail = stderr.decode("utf-8", "replace").strip()
+        lowered = detail.lower()
+        # An auth prompt means the repo is private or doesn't exist — GitHub
+        # asks for credentials for both (so a private repo can't be probed).
+        if (
+            "could not read username" in lowered
+            or "authentication failed" in lowered
+            or "terminal prompts disabled" in lowered
+            or "repository not found" in lowered
+        ):
+            raise GitCloneError(
+                "Couldn't access that repository. Make sure it's a public GitHub "
+                "repo that exists — private repositories aren't supported."
+            )
         raise GitCloneError(f"git clone failed: {detail}")
 
 

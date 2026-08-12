@@ -15,15 +15,15 @@ export function SeverityCards({ counts }: SeverityCardsProps) {
       {CARD_SEVERITIES.map((severity) => {
         const meta = SEVERITY_META[severity];
         return (
-          <Card key={severity} className={`p-4 ${meta.border}`}>
+          <Card key={severity} className="p-4">
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink/50">
                 {meta.label}
               </p>
             </div>
             <p className={`mt-3 text-3xl font-bold ${meta.text}`}>{counts[severity]}</p>
-            <p className="mt-0.5 text-xs text-slate-600">
+            <p className="mt-0.5 text-xs text-ink/40">
               {counts[severity] === 1 ? "issue" : "issues"}
             </p>
           </Card>

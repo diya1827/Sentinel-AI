@@ -44,3 +44,7 @@ class ScanReport(BaseModel):
     )
     total_findings: int = 0
     severity_counts: dict[str, int] = Field(default_factory=dict)
+    owasp_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="OWASP Top 10 2021 category label → finding count.",
+    )

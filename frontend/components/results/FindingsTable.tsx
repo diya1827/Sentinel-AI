@@ -21,19 +21,19 @@ export function FindingsTable({ findings }: FindingsTableProps) {
         title="Security Findings"
         icon={<ShieldIcon className="h-4 w-4" />}
         action={
-          <span className="text-xs text-slate-500">{findings.length} prioritized</span>
+          <span className="text-xs text-ink/40">{findings.length} prioritized</span>
         }
       />
 
       {sorted.length === 0 ? (
-        <p className="px-5 py-10 text-center text-sm text-slate-500">
+        <p className="px-5 py-10 text-center text-sm text-ink/40">
           No prioritized findings. 🎉
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-black/5 text-xs uppercase tracking-wide text-ink/40">
                 <th className="w-12 px-5 py-3 font-medium">#</th>
                 <th className="px-3 py-3 font-medium">Severity</th>
                 <th className="px-3 py-3 font-medium">Issue</th>
@@ -77,29 +77,29 @@ function FindingRow({
     <>
       <tr
         onClick={onToggle}
-        className="cursor-pointer border-b border-slate-800/60 transition-colors hover:bg-slate-800/30"
+        className="cursor-pointer border-b border-black/5 transition-colors hover:bg-pistachio-50"
       >
-        <td className="px-5 py-3 text-slate-500">{finding.priority}</td>
+        <td className="px-5 py-3 text-ink/40">{finding.priority}</td>
         <td className="px-3 py-3">
           <SeverityBadge severity={finding.severity} />
         </td>
-        <td className="px-3 py-3 font-medium text-slate-200">{finding.title}</td>
-        <td className="px-3 py-3 text-slate-400">{finding.category}</td>
-        <td className="max-w-[220px] truncate px-3 py-3 font-mono text-xs text-slate-400">
+        <td className="px-3 py-3 font-medium text-ink">{finding.title}</td>
+        <td className="px-3 py-3 text-ink/60">{finding.category}</td>
+        <td className="max-w-[220px] truncate px-3 py-3 font-mono text-xs text-ink/60">
           {primaryFile ?? "—"}
           {finding.affectedFiles.length > 1 && (
-            <span className="text-slate-600"> +{finding.affectedFiles.length - 1}</span>
+            <span className="text-ink/30"> +{finding.affectedFiles.length - 1}</span>
           )}
         </td>
-        <td className="px-3 py-3 text-xs text-slate-400">
+        <td className="px-3 py-3 text-xs text-ink/60">
           {finding.scanners.join(", ") || "—"}
         </td>
-        <td className="px-3 py-3 text-slate-500">
+        <td className="px-3 py-3 text-ink/40">
           <ChevronIcon className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} />
         </td>
       </tr>
       {isOpen && (
-        <tr className="bg-slate-950/40">
+        <tr className="bg-pistachio-50/60">
           <td colSpan={7} className="px-5 py-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <DetailBlock label="Why it matters">{finding.whyItMatters}</DetailBlock>
@@ -109,15 +109,14 @@ function FindingRow({
               <DetailBlock label="Remediation" accent>
                 {finding.remediation}
               </DetailBlock>
-              <div className="flex flex-wrap items-start gap-4 text-xs text-slate-500">
+              <div className="flex flex-wrap items-start gap-4 text-xs text-ink/50">
                 <span>
-                  Confidence:{" "}
-                  <span className="text-slate-300">{finding.confidence}</span>
+                  Confidence: <span className="text-ink">{finding.confidence}</span>
                 </span>
                 {finding.affectedFiles.length > 0 && (
                   <span className="min-w-0">
                     Files:{" "}
-                    <span className="font-mono text-slate-300">
+                    <span className="font-mono text-ink/80">
                       {finding.affectedFiles.join(", ")}
                     </span>
                   </span>
@@ -146,13 +145,13 @@ function DetailBlock({
   return (
     <div
       className={`rounded-lg border p-3 ${
-        accent ? "border-emerald-500/20 bg-emerald-500/5" : "border-slate-800 bg-slate-900/50"
+        accent ? "border-pistachio-300 bg-pistachio-50" : "border-black/5 bg-white"
       }`}
     >
-      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink/50">
         {label}
       </p>
-      <p className="text-sm leading-relaxed text-slate-300">{children}</p>
+      <p className="text-sm leading-relaxed text-ink/80">{children}</p>
     </div>
   );
 }

@@ -27,17 +27,17 @@ export function ResultsView({ report }: ResultsViewProps) {
       {/* Title + actions */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">Security Review</h1>
-          <p className="mt-0.5 font-mono text-xs text-slate-500">
+          <h1 className="text-2xl font-bold text-ink">Security Review</h1>
+          <p className="mt-0.5 font-mono text-xs text-ink/40">
             repo {report.repositoryId.slice(0, 12)}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setAskOpen(true)}>
+          <Button onClick={() => setAskOpen(true)}>
             <SparkIcon className="h-4 w-4" />
-            Ask AI
+            Fix with AI
           </Button>
-          <Button onClick={() => downloadReport(report)}>
+          <Button variant="secondary" onClick={() => downloadReport(report)}>
             <DownloadIcon className="h-4 w-4" />
             Download Report
           </Button>

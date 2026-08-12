@@ -39,6 +39,12 @@ export interface ScanReport {
 
 export type Confidence = "low" | "medium" | "high";
 
+/** A curated help link attached to a finding. */
+export interface Reference {
+  title: string;
+  url: string;
+}
+
 /** One correlated, deduplicated, ranked issue produced by the AI agent. */
 export interface PrioritizedFinding {
   id: string;
@@ -46,6 +52,7 @@ export interface PrioritizedFinding {
   severity: Severity;
   priority: number;
   category: string;
+  owaspCategory?: string | null;
   affectedFiles: string[];
   sourceFindingIds: string[];
   scanners: string[];
@@ -54,6 +61,11 @@ export interface PrioritizedFinding {
   remediation: string;
   confidence: Confidence;
   duplicateOf?: string | null;
+  // Human-friendly, actionable extras.
+  plainSummary: string;
+  fixSteps: string[];
+  fixPrompt: string;
+  references: Reference[];
 }
 
 /** The AI AppSec-engineer agent's full review — rendered directly by the UI. */

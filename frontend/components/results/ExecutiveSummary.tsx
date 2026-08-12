@@ -22,7 +22,7 @@ export function ExecutiveSummary({ report }: ExecutiveSummaryProps) {
         title="AI Security Summary"
         icon={<SparkIcon className="h-4 w-4" />}
         action={
-          <div className="flex rounded-lg bg-slate-800 p-0.5 text-xs">
+          <div className="flex rounded-lg bg-pistachio-100 p-0.5 text-xs">
             <ToggleButton active={view === "executive"} onClick={() => setView("executive")}>
               Executive
             </ToggleButton>
@@ -33,17 +33,17 @@ export function ExecutiveSummary({ report }: ExecutiveSummaryProps) {
         }
       />
       <div className="px-5 py-4">
-        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-300">{text}</p>
+        <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80">{text}</p>
 
         {report.correlations.length > 0 && (
-          <div className="mt-4 border-t border-slate-800 pt-4">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mt-4 border-t border-black/5 pt-4">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink/50">
               Correlations
             </p>
             <ul className="space-y-1.5">
               {report.correlations.map((c, i) => (
-                <li key={i} className="flex gap-2 text-xs text-slate-400">
-                  <span className="text-indigo-400">•</span>
+                <li key={i} className="flex gap-2 text-xs text-ink/60">
+                  <span className="text-pistachio-600">•</span>
                   {c}
                 </li>
               ))}
@@ -51,10 +51,10 @@ export function ExecutiveSummary({ report }: ExecutiveSummaryProps) {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-slate-800 pt-4 text-xs text-slate-500">
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-black/5 pt-4 text-xs text-ink/50">
           <span>
             {report.totalInputFindings} raw findings →{" "}
-            <span className="text-slate-300">{report.prioritizedFindings.length}</span> prioritized
+            <span className="text-ink">{report.prioritizedFindings.length}</span> prioritized
           </span>
           <span>{report.duplicatesRemoved} duplicates removed</span>
           {report.modelUsed && <span>Model: {report.modelUsed}</span>}
@@ -77,7 +77,7 @@ function ToggleButton({
     <button
       onClick={onClick}
       className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-        active ? "bg-slate-700 text-slate-100" : "text-slate-400 hover:text-slate-200"
+        active ? "bg-white text-ink shadow-sm" : "text-ink/50 hover:text-ink"
       }`}
     >
       {children}

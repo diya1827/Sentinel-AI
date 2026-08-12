@@ -18,10 +18,16 @@ from app.config.settings import Settings, get_settings
 from app.models.finding import Severity
 from app.models.scan import ScannerResult, ScanReport
 from app.scanners.base import Scanner
+from app.scanners.checkov import CheckovScanner
 from app.scanners.gitleaks import GitleaksScanner
+from app.scanners.osv import OsvScanner
 from app.scanners.semgrep import SemgrepScanner
+from app.scanners.xss import XssScanner
 from app.utils.logging import get_logger
 from app.utils.workspace import Workspace
+
+# Shown in the OWASP-coverage summary for findings we couldn't map to a category.
+_UNCLASSIFIED = "Unclassified"
 
 logger = get_logger(__name__)
 
@@ -40,7 +46,13 @@ class ScannerService:
         self._scanners = (
             scanners
             if scanners is not None
-            else [SemgrepScanner(self._settings), GitleaksScanner(self._settings)]
+            else [
+                SemgrepScanner(self._settings),   # SAST → A01/A03/…
+                XssScanner(self._settings),        # XSS → A03
+                GitleaksScanner(self._settings),   # secrets → A07
+                OsvScanner(self._settings),        # SCA → A06
+                CheckovScanner(self._settings),    # IaC misconfig → A05
+            ]
         )
 
     async def scan_repository(self, repository_id: str) -> ScanReport:
@@ -72,10 +84,16 @@ class ScannerService:
         # Always emit every severity key (0-filled) for a stable frontend shape.
         severity_counts = {sev.value: counts.get(sev.value, 0) for sev in Severity}
 
+        # OWASP Top 10 coverage: how many findings landed in each category.
+        owasp_counts: Counter[str] = Counter(
+            f.owasp_category or _UNCLASSIFIED for f in merged
+        )
+
         return ScanReport(
             repository_id=repository_id,
             results=results,
             findings=merged,
             total_findings=len(merged),
             severity_counts=severity_counts,
+            owasp_counts=dict(sorted(owasp_counts.items())),
         )

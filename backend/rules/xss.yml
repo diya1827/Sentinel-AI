@@ -1,0 +1,187 @@
+# Sentinel AI — custom Cross-Site Scripting (XSS) ruleset.
+#
+# Each rule encodes a source -> sink taint flow for one XSS variety and carries
+# an `xss-type` in its metadata (reflected | stored | dom) that the XssScanner
+# reads to tag findings. Severities follow the Semgrep convention that the
+# SemgrepScanner already maps: ERROR -> high, WARNING -> medium, INFO -> low.
+#
+# Verify with:  semgrep --test --config rules/xss.yml rules/tests/
+
+rules:
+  # ── DOM-based XSS (client-side JS: URL/document source -> HTML/JS sink) ──
+  - id: dom-xss-source-to-sink
+    languages: [javascript, typescript]
+    severity: ERROR
+    mode: taint
+    message: >
+      DOM-based XSS: data from an attacker-controllable source (the URL,
+      document, or window.name) reaches a dynamic HTML/JS sink without
+      sanitization. An attacker who controls the URL can execute arbitrary
+      JavaScript in the victim's browser. Assign to textContent instead, or
+      sanitize with a library such as DOMPurify before writing HTML.
+    metadata:
+      xss-type: dom
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://portswigger.net/web-security/cross-site-scripting/dom-based
+    pattern-sources:
+      - pattern: location
+      - pattern: location.search
+      - pattern: location.hash
+      - pattern: location.href
+      - pattern: document.URL
+      - pattern: document.documentURI
+      - pattern: document.referrer
+      - pattern: document.cookie
+      - pattern: window.name
+      - pattern: (new URLSearchParams(...)).get(...)
+    pattern-sinks:
+      - patterns:
+          - pattern: $EL.innerHTML = $X
+          - focus-metavariable: $X
+      - patterns:
+          - pattern: $EL.outerHTML = $X
+          - focus-metavariable: $X
+      - patterns:
+          - pattern: $EL.insertAdjacentHTML($POS, $X)
+          - focus-metavariable: $X
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+      - pattern: eval(...)
+      - pattern: $EL.setAttribute("srcdoc", ...)
+      - pattern: $J.html(...)
+    pattern-sanitizers:
+      - pattern: DOMPurify.sanitize(...)
+      - pattern: encodeURIComponent(...)
+
+  # ── Reflected/Stored XSS in Express (server echoes request data as HTML) ──
+  - id: express-xss-request-to-response
+    languages: [javascript, typescript]
+    severity: ERROR
+    mode: taint
+    message: >
+      Reflected/stored XSS: request-controlled data flows into an HTML response
+      body without escaping. If the value comes straight from the request it is
+      reflected XSS; if it was first persisted (DB, file) and later rendered it
+      is stored XSS. Use a templating engine with auto-escaping, or HTML-encode
+      the value before sending it.
+    metadata:
+      xss-type: reflected
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://portswigger.net/web-security/cross-site-scripting/reflected
+    pattern-sources:
+      - pattern: $REQ.query
+      - pattern: $REQ.params
+      - pattern: $REQ.body
+      - pattern: $REQ.headers
+      - pattern: $REQ.cookies
+    pattern-sinks:
+      - pattern: $RES.send(...)
+      - pattern: $RES.write(...)
+      - pattern: $RES.end(...)
+    pattern-sanitizers:
+      - pattern: escapeHtml(...)
+      - pattern: $ESC.escape(...)
+
+  # ── React: dangerouslySetInnerHTML with unsanitized markup ──
+  - id: react-dangerously-set-inner-html
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      React dangerouslySetInnerHTML bypasses React's automatic escaping and
+      renders raw HTML. If __html contains attacker-controllable data this is an
+      XSS sink. Sanitize with DOMPurify.sanitize(...) or render the value as
+      text instead.
+    metadata:
+      xss-type: dom
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://reactjs.org/docs/dom-elements.html#dangerouslysetinnerhtml
+    patterns:
+      - pattern: "<$EL ... dangerouslySetInnerHTML={{ __html: $X }} />"
+      - pattern-not: "<$EL ... dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(...) }} />"
+      - pattern-not: '<$EL ... dangerouslySetInnerHTML={{ __html: "..." }} />'
+
+  # ── Flask: render_template_string on request data (XSS + SSTI) ──
+  - id: flask-render-template-string-tainted
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >
+      render_template_string() is called with request-controlled data. Because
+      the template itself is attacker-influenced, this is both a server-side
+      template injection (SSTI) and an XSS sink. Render a fixed template file and
+      pass user data as escaped context variables instead.
+    metadata:
+      xss-type: reflected
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://portswigger.net/web-security/server-side-template-injection
+    pattern-sources:
+      - pattern: request.args
+      - pattern: request.form
+      - pattern: request.values
+      - pattern: request.args.get(...)
+      - pattern: flask.request.args
+    pattern-sinks:
+      - pattern: render_template_string(...)
+      - pattern: flask.render_template_string(...)
+
+  # ── Flask: request data returned in a raw response ──
+  - id: flask-reflected-response-tainted
+    languages: [python]
+    severity: ERROR
+    mode: taint
+    message: >
+      Request-controlled data is placed into a raw Flask response without
+      escaping, reflecting attacker input into the page as HTML. Return escaped
+      content (e.g. via render_template with auto-escaping) or wrap the value in
+      markupsafe.escape().
+    metadata:
+      xss-type: reflected
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://portswigger.net/web-security/cross-site-scripting/reflected
+    pattern-sources:
+      - pattern: request.args
+      - pattern: request.form
+      - pattern: request.values
+      - pattern: request.args.get(...)
+    pattern-sinks:
+      - pattern: make_response(...)
+      - pattern: flask.make_response(...)
+      - pattern: Response(...)
+      - pattern: flask.Response(...)
+    pattern-sanitizers:
+      - pattern: markupsafe.escape(...)
+      - pattern: escape(...)
+
+  # ── markupsafe.Markup() marks attacker data as trusted -> XSS ──
+  - id: python-markup-marks-tainted-safe
+    languages: [python]
+    severity: WARNING
+    mode: taint
+    message: >
+      Wrapping request-controlled data in markupsafe.Markup()/flask.Markup()
+      declares it "already safe", disabling Jinja auto-escaping and allowing XSS.
+      Do not wrap untrusted input in Markup; escape it instead.
+    metadata:
+      xss-type: stored
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A03:2021 - Injection"
+      references:
+        - https://markupsafe.palletsprojects.com/
+    pattern-sources:
+      - pattern: request.args
+      - pattern: request.form
+      - pattern: request.args.get(...)
+    pattern-sinks:
+      - pattern: Markup(...)
+      - pattern: markupsafe.Markup(...)
+      - pattern: flask.Markup(...)

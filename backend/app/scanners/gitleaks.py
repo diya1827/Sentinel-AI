@@ -19,8 +19,12 @@ from pathlib import Path
 from typing import Any
 
 from app.models.finding import Finding, Severity
+from app.models.owasp import classify_owasp
 from app.scanners.base import Scanner
 from app.utils.subprocess import run_command
+
+# Hard-coded credentials → CWE-798, which OWASP maps to A07.
+_SECRET_CWE_IDS = ["CWE-798"]
 
 _SECRET_REMEDIATION = (
     "Treat the exposed secret as compromised: rotate/revoke it immediately, "
@@ -86,6 +90,8 @@ class GitleaksScanner(Scanner):
                     title=f"Exposed secret: {rule_id}",
                     description=item.get("Description"),
                     remediation=_SECRET_REMEDIATION,
+                    cwe_ids=list(_SECRET_CWE_IDS),
+                    owasp_category=classify_owasp(_SECRET_CWE_IDS, self.name),
                     rule_id=rule_id,
                 )
             )

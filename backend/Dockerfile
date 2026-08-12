@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────────────
 # Sentinel AI — Backend image
-# FastAPI + Semgrep (pip) + Gitleaks (Go binary)
+# FastAPI + Semgrep/Checkov (pip) + Gitleaks & OSV-Scanner (Go binaries)
 # ─────────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS base
 
@@ -9,14 +9,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# ── System deps + Gitleaks ───────────────────────────────────────
-# Gitleaks is distributed as a static Go binary; we pull a pinned release.
+# ── System deps + Gitleaks + OSV-Scanner ─────────────────────────
+# Both are distributed as static Go binaries; we pull pinned releases.
 ARG GITLEAKS_VERSION=8.21.2
+ARG OSV_SCANNER_VERSION=1.9.2
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl git ca-certificates \
     && curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
         | tar -xz -C /usr/local/bin gitleaks \
     && chmod +x /usr/local/bin/gitleaks \
+    && curl -sSL -o /usr/local/bin/osv-scanner "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+    && chmod +x /usr/local/bin/osv-scanner \
     && apt-get purge -y curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -26,6 +29,14 @@ WORKDIR /app
 # ── Python deps (cached layer) ───────────────────────────────────
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# ── Checkov (IaC scanner) — installed isolated via pipx ──────────
+# Checkov's dependency pins conflict with semgrep's, so it gets its own venv;
+# pipx puts the `checkov` CLI on PATH without touching the app environment.
+ARG CHECKOV_VERSION=3.2.334
+RUN pip install --no-cache-dir pipx \
+    && PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin \
+       pipx install "checkov==${CHECKOV_VERSION}"
 
 # ── Application code ─────────────────────────────────────────────
 COPY . .

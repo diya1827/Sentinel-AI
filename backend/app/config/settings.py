@@ -7,6 +7,7 @@ reads `os.environ` directly. Backed by pydantic-settings for validation.
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
@@ -71,6 +72,18 @@ class Settings(BaseSettings):
     # 512MB free tier). 0 = let Semgrep decide (unbounded / all cores).
     semgrep_max_memory: int = 0
     semgrep_jobs: int = 0
+    # SCA (osv-scanner) — dependency vulnerabilities → OWASP A06.
+    osv_timeout: int = 180
+    # IaC misconfiguration (checkov) → OWASP A05.
+    checkov_timeout: int = 180
+    # Custom XSS ruleset run by the dedicated XssScanner. Defaults to the
+    # bundled backend/rules/xss.yml, resolved absolutely so it works regardless
+    # of the process's working directory.
+    xss_rules_path: str = Field(
+        default_factory=lambda: str(
+            Path(__file__).resolve().parents[2] / "rules" / "xss.yml"
+        )
+    )
 
     # ── Workspace ────────────────────────────────────────────────
     scan_workspace_dir: str = Field(default="/tmp/sentinel-scans")
@@ -86,6 +99,22 @@ class Settings(BaseSettings):
     job_ttl: int = 86_400
     result_cache_ttl: int = 86_400
     idempotency_ttl: int = 3_600
+
+    # ── Database (users / auth) ──────────────────────────────────
+    # SQLite by default → zero external setup. Point at Postgres in prod.
+    database_url: str = "sqlite:///./sentinel.db"
+
+    # ── Auth / JWT ───────────────────────────────────────────────
+    # MUST be overridden in production (set JWT_SECRET to a long random value).
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60
+    reset_token_expire_minutes: int = 30
+    # Login abuse protection (backed by Redis).
+    login_max_attempts: int = 10
+    login_lockout_seconds: int = 300
+    # Used to build password-reset links in emails.
+    frontend_base_url: str = "http://localhost:3000"
 
     # ── Repository ingestion ─────────────────────────────────────
     # Hosts a GitHub URL is allowed to resolve to (comma-separated).

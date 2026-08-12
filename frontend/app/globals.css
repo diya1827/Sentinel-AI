@@ -3,28 +3,29 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
-/* Subtle page backdrop */
+/* Soft pistachio backdrop with a gentle lift toward the top. */
 body {
+  background-color: #dcedc1;
   background-image:
-    radial-gradient(60rem 60rem at 80% -10%, rgba(79, 70, 229, 0.12), transparent 60%),
-    radial-gradient(50rem 50rem at -10% 10%, rgba(16, 185, 129, 0.08), transparent 55%);
+    radial-gradient(60rem 45rem at 50% -12%, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(50rem 50rem at 100% 0%, rgba(116, 160, 63, 0.12), transparent 55%);
   background-attachment: fixed;
 }
 
 /* Thin, unobtrusive scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(51 65 85) transparent;
+  scrollbar-color: rgb(170 209 119) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgb(51 65 85);
+  background: rgb(170 209 119);
   border-radius: 9999px;
 }
 

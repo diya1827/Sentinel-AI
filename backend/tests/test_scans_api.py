@@ -35,8 +35,15 @@ def test_scan_ingested_repo_returns_report() -> None:
     body = scan.json()
 
     assert body["repository_id"] == repo_id
-    assert {r["scanner"] for r in body["results"]} == {"semgrep", "gitleaks"}
+    assert {r["scanner"] for r in body["results"]} == {
+        "semgrep",
+        "xss",
+        "gitleaks",
+        "osv",
+        "checkov",
+    }
     assert "critical" in body["severity_counts"]
+    assert "owasp_counts" in body
     assert body["total_findings"] == len(body["findings"])
 
     client.delete(f"{BASE}/{repo_id}")

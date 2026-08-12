@@ -18,9 +18,18 @@ httpx==0.28.1
 # ─── Job queue / cache / counters ────────────────────────────────
 redis==5.3.1             # async client; backs the scan queue, cache, counters
 
+# ─── Persistence / auth ──────────────────────────────────────────
+sqlmodel==0.0.39         # SQLAlchemy + Pydantic models (users, tokens)
+email-validator==2.2.0   # EmailStr validation
+passlib[bcrypt]==1.7.4   # password hashing (bcrypt)
+bcrypt==4.0.1            # pinned: avoids passlib's version-read warning on 4.1+
+python-jose[cryptography]==3.3.0  # JWT sign/verify
+
 # ─── Security scanners (invoked as CLIs; pinned for reproducibility)
-# NOTE: gitleaks is a Go binary installed in the Dockerfile, not via pip.
-semgrep==1.99.0
+# NOTE: only semgrep lives in the app venv. gitleaks and osv-scanner are Go
+#       binaries, and checkov is installed isolated via pipx (its deps conflict
+#       with semgrep's) — all three are set up in the Dockerfile.
+semgrep==1.99.0          # SAST → OWASP A01/A03/…
 
 # ─── Utilities ───────────────────────────────────────────────────
 tenacity==9.0.0          # retry/backoff for LLM + tool calls

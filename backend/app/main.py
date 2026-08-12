@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.dependencies import get_job_service
 from app.api.router import api_router
 from app.config.settings import get_settings
+from app.db.session import init_db
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -25,8 +26,9 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start the in-process worker pool; cancel it on shutdown."""
+    """Initialize the database, then start the in-process worker pool."""
     settings = get_settings()
+    init_db()
     job_service = get_job_service()
     workers = [
         asyncio.create_task(job_service.run_worker(f"worker-{i}"))

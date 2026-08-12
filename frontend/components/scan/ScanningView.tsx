@@ -11,9 +11,9 @@ interface ScanningViewProps {
 
 const STEPS = [
   { key: "ingest", label: "Ingesting repository", detail: "Staging files in an isolated workspace" },
-  { key: "semgrep", label: "Static analysis", detail: "Scanning code patterns with Semgrep" },
-  { key: "gitleaks", label: "Secret scanning", detail: "Hunting for leaked credentials with Gitleaks" },
-  { key: "ai", label: "AI security review", detail: "Correlating, prioritizing, and explaining findings" },
+  { key: "sast", label: "Static & secret analysis", detail: "Semgrep, XSS rules & Gitleaks" },
+  { key: "deps", label: "Dependency & config checks", detail: "OSV-Scanner & Checkov" },
+  { key: "ai", label: "AI security review", detail: "Correlating, prioritizing & explaining findings" },
 ];
 
 export function ScanningView({ status }: ScanningViewProps) {
@@ -38,16 +38,16 @@ export function ScanningView({ status }: ScanningViewProps) {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center px-4">
-      <span className="animate-glow flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-400">
+      <span className="animate-glow flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-pistachio-600 shadow-soft">
         <ShieldIcon className="h-9 w-9" />
       </span>
-      <h1 className="mt-6 text-xl font-semibold text-slate-100">Analyzing your code…</h1>
-      <p className="mt-1 text-sm text-slate-500">This usually takes a few moments.</p>
+      <h1 className="mt-6 text-xl font-semibold text-ink">Sniffing out trouble…</h1>
+      <p className="mt-1 text-sm text-ink/50">This usually takes a few moments.</p>
 
       {/* Progress bar */}
-      <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-white">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-700 ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-pistachio-500 to-pistachio-700 transition-all duration-700 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -61,17 +61,17 @@ export function ScanningView({ status }: ScanningViewProps) {
               key={step.key}
               className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
                 state === "active"
-                  ? "border-indigo-500/40 bg-indigo-500/5"
-                  : "border-slate-800 bg-slate-900/40"
+                  ? "border-pistachio-400 bg-pistachio-50"
+                  : "border-black/5 bg-white"
               }`}
             >
               <span
                 className={`flex h-7 w-7 flex-none items-center justify-center rounded-full ${
                   state === "done"
-                    ? "bg-emerald-500/15 text-emerald-400"
+                    ? "bg-pistachio-100 text-pistachio-700"
                     : state === "active"
-                      ? "bg-indigo-500/15 text-indigo-400"
-                      : "bg-slate-800 text-slate-600"
+                      ? "bg-pistachio-100 text-pistachio-700"
+                      : "bg-pistachio-50 text-ink/30"
                 }`}
               >
                 {state === "done" ? (
@@ -85,12 +85,12 @@ export function ScanningView({ status }: ScanningViewProps) {
               <div className="min-w-0">
                 <p
                   className={`text-sm font-medium ${
-                    state === "pending" ? "text-slate-500" : "text-slate-200"
+                    state === "pending" ? "text-ink/40" : "text-ink"
                   }`}
                 >
                   {step.label}
                 </p>
-                <p className="truncate text-xs text-slate-500">{step.detail}</p>
+                <p className="truncate text-xs text-ink/50">{step.detail}</p>
               </div>
             </li>
           );

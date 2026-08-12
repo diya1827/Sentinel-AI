@@ -30,6 +30,7 @@ from app.agents.provider import (
     LLMResponse,
     get_llm_provider,
 )
+from app.agents.references import curate_references
 from app.agents.repo_tools import build_repo_tools
 from app.agents.tools import ToolRegistry
 from app.config.settings import Settings, get_settings
@@ -107,12 +108,32 @@ class AgentService:
         report.repository_id = repository.repository_id
         report.model_used = self._provider.model
         report.total_input_findings = len(scan.findings)
+        self._enrich_findings(report)
         logger.info(
             "Agent produced %d prioritized issues from %d findings",
             len(report.prioritized_findings),
             len(scan.findings),
         )
         return report
+
+    # ── Enrichment ───────────────────────────────────────────────
+
+    @staticmethod
+    def _enrich_findings(report: AgentReport) -> None:
+        """Add curated help links and backfill any friendly fields the model
+        omitted, so the UI always has a plain summary, steps, and a fix prompt."""
+        for f in report.prioritized_findings:
+            f.references = curate_references(f.category, f.owasp_category)
+            if not f.plain_summary.strip():
+                f.plain_summary = f.why_it_matters
+            if not f.fix_steps:
+                f.fix_steps = [f.remediation] if f.remediation.strip() else []
+            if not f.fix_prompt.strip():
+                where = ", ".join(f.affected_files) or "the affected file(s)"
+                f.fix_prompt = (
+                    f"Fix this security issue in {where}: {f.title}. "
+                    f"{f.remediation} Keep the existing behavior unchanged."
+                )
 
     # ── Tooling ──────────────────────────────────────────────────
 
@@ -231,6 +252,8 @@ class AgentService:
                 "line": f.line,
                 "title": f.title,
                 "description": f.description,
+                "owasp": f.owasp_category,
+                "cwe": f.cwe_ids,
                 "rule_id": f.rule_id,
             }
             for fid, f in indexed.items()

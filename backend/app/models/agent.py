@@ -25,6 +25,13 @@ class Confidence(str, Enum):
     HIGH = "high"
 
 
+class Reference(BaseModel):
+    """A curated help link (title + url). Populated server-side, not by the LLM."""
+
+    title: str
+    url: str
+
+
 class PrioritizedFinding(BaseModel):
     """One correlated, deduplicated, ranked issue produced by the agent."""
 
@@ -33,6 +40,10 @@ class PrioritizedFinding(BaseModel):
     severity: Severity
     priority: int = Field(description="1-based rank; 1 is most urgent.")
     category: str = Field(description="Vulnerability class, e.g. 'SQL Injection'.")
+    owasp_category: str | None = Field(
+        default=None,
+        description="OWASP Top 10 2021 label, e.g. 'A03:2021 - Injection', if known.",
+    )
     affected_files: list[str] = Field(default_factory=list)
     source_finding_ids: list[str] = Field(
         default_factory=list,
@@ -44,6 +55,24 @@ class PrioritizedFinding(BaseModel):
     remediation: str
     confidence: Confidence = Confidence.MEDIUM
     duplicate_of: str | None = None
+
+    # ── Human-friendly, actionable extras ────────────────────────
+    plain_summary: str = Field(
+        default="",
+        description="1-2 sentences a non-technical person understands (no jargon).",
+    )
+    fix_steps: list[str] = Field(
+        default_factory=list,
+        description="A few short, plain-language steps to fix it.",
+    )
+    fix_prompt: str = Field(
+        default="",
+        description="A copy-paste prompt for an AI coding assistant to fix this issue.",
+    )
+    references: list[Reference] = Field(
+        default_factory=list,
+        description="Curated help links (added server-side; not from the model).",
+    )
 
 
 class AgentReport(BaseModel):

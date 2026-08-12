@@ -27,7 +27,7 @@ export function RiskScore({ score, overallRisk }: RiskScoreProps) {
 
   return (
     <Card className="flex flex-col items-center justify-center p-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">
         Risk Score
       </p>
 
@@ -39,7 +39,7 @@ export function RiskScore({ score, overallRisk }: RiskScoreProps) {
             r={RADIUS}
             fill="none"
             strokeWidth={10}
-            className="stroke-slate-800"
+            className="stroke-pistachio-100"
           />
           <circle
             cx="60"
@@ -55,15 +55,15 @@ export function RiskScore({ score, overallRisk }: RiskScoreProps) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-bold text-slate-50">{score}</span>
-          <span className="text-xs text-slate-500">/ 100</span>
+          <span className="text-4xl font-bold text-ink">{score}</span>
+          <span className="text-xs text-ink/40">/ 100</span>
         </div>
       </div>
 
       <p className={`mt-4 text-sm font-medium ${SEVERITY_META[band.severity].text}`}>
         {band.label}
       </p>
-      <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+      <div className="mt-2 flex items-center gap-2 text-xs text-ink/50">
         <span>AI verdict:</span>
         <SeverityBadge severity={overallRisk} />
       </div>

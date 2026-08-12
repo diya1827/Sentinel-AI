@@ -18,18 +18,23 @@ export function Dashboard() {
 
   const isScanning = status === "ingesting" || status === "analyzing";
   const isDone = status === "done" && report !== null;
+  const isLanding = !isScanning && !isDone;
 
   return (
     <div className="min-h-screen">
-      <Header
-        action={
-          isDone ? (
-            <Button variant="ghost" size="sm" onClick={analysis.reset}>
-              New scan
-            </Button>
-          ) : undefined
-        }
-      />
+      {/* On the landing the big centered wordmark is the header, so the slim
+          nav only shows once you're scanning or viewing results. */}
+      {!isLanding && (
+        <Header
+          action={
+            isDone ? (
+              <Button variant="ghost" size="sm" onClick={analysis.reset}>
+                New scan
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
 
       <main>
         {isScanning ? (
